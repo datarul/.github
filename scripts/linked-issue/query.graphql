@@ -1,0 +1,28 @@
+query ($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    defaultBranchRef {
+      name
+    }
+    pullRequest(number: $number) {
+      baseRefName
+      author {
+        __typename
+        login
+      }
+      labels(first: 50) {
+        nodes {
+          name
+        }
+      }
+      closingIssuesReferences(first: 20) {
+        totalCount
+        nodes {
+          number
+          repository {
+            nameWithOwner
+          }
+        }
+      }
+    }
+  }
+}
