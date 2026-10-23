@@ -24,7 +24,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: datarul/.github
-          ref: main
+          # The checked-in script on main everywhere; a PR to this repository
+          # checks its own revision, so a change to the check is tested before merge.
+          ref: ${{ github.repository == 'datarul/.github' && github.event.pull_request.head.sha || 'main' }}
           path: .linked-issue
           sparse-checkout: scripts/linked-issue
           persist-credentials: false
