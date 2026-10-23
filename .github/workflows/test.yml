@@ -1,0 +1,23 @@
+name: Test
+
+on:
+  pull_request:
+    paths:
+      - "scripts/**"
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: shellcheck scripts/linked-issue/*.sh scripts/linked-issue/tests/*.sh
+      - run: bash scripts/linked-issue/tests/decide.test.sh

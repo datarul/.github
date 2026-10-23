@@ -1,0 +1,38 @@
+# Org-wide "every PR closes an issue" check (datarul/.github#1).
+#
+# Required on every repository's default branch by an org ruleset ("Require
+# workflows to pass before merging"); v3-orchestrator is outside that ruleset.
+# A ruleset ignores `types:` and runs this only on opened/synchronize/reopened,
+# so the script reads the PR's live state and a plain Re-run picks up a
+# "Closes #n" or `no-issue` label added afterwards.
+name: Linked issue
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  linked-issue:
+    name: linked-issue
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: datarul/.github
+          # The checked-in script on main everywhere; a PR to this repository
+          # checks its own revision, so a change to the check is tested before merge.
+          ref: ${{ github.repository == 'datarul/.github' && github.event.pull_request.head.sha || 'main' }}
+          path: .linked-issue
+          sparse-checkout: scripts/linked-issue
+          persist-credentials: false
+      - name: Check closing issue reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: bash .linked-issue/scripts/linked-issue/check.sh
