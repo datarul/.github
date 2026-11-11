@@ -2,6 +2,9 @@
 # Decides whether a pull request satisfies "every PR closes an issue".
 #
 # Input (stdin): the GraphQL response of query.graphql.
+# Env: CHANGED_FILES_FILE (optional) — the PR's changed paths, one per line, new
+#   and previous names. check.sh provides it only when it listed every file of
+#   the PR and the repository takes the docs-only exemption.
 # Output: one line "<pass|fail> <reason> [detail]"; exit 0 on pass, 1 on fail.
 # Kept free of network calls so the decision is testable from fixtures.
 set -euo pipefail
@@ -32,6 +35,24 @@ fi
 
 if [[ "$(jq -r --arg l "$NO_ISSUE_LABEL" '.data.repository.pullRequest.labels.nodes | any(.name == $l)' <<<"$json")" == "true" ]]; then
   echo "pass no-issue-label ${NO_ISSUE_LABEL}"
+  exit 0
+fi
+
+# Docs-only exemption, fail-closed: every listed path must be Markdown. An empty
+# or missing list is "not docs-only" and the normal requirement applies.
+docs_only() {
+  local file="$1" path n=0
+  [[ -n "$file" && -s "$file" ]] || return 1
+  while IFS= read -r path || [[ -n "$path" ]]; do
+    case "$path" in
+      *.md) n=$((n + 1)) ;;
+      *) return 1 ;;
+    esac
+  done <"$file"
+  (( n > 0 ))
+}
+if docs_only "${CHANGED_FILES_FILE:-}"; then
+  echo "pass docs-only every changed file is Markdown"
   exit 0
 fi
 

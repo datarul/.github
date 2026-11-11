@@ -5,6 +5,7 @@ query ($owner: String!, $name: String!, $number: Int!) {
     }
     pullRequest(number: $number) {
       baseRefName
+      changedFiles
       author {
         __typename
         login
