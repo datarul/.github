@@ -35,4 +35,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Repos whose product is the document itself: Markdown is the work there,
+          # so the docs-only exemption never applies (space separated).
+          DOCS_EXEMPT_EXCLUDED_REPOS: user-guide technical-research
         run: bash .linked-issue/scripts/linked-issue/check.sh

@@ -54,6 +54,43 @@ expect "promotion to non-default branch exempts" 0 "pass non-default-base main" 
 expect "missing pull request fails" 1 "fail missing-pr" \
   '{"data":{"repository":{"defaultBranchRef":{"name":"develop"},"pullRequest":null}}}'
 
+# expect_files <name> <exit-code> <output-prefix> <json> <paths…> — runs decide.sh
+# with CHANGED_FILES_FILE holding the given paths, one per line.
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+expect_files() {
+  local name="$1" want="$2" prefix="$3" json="$4" out code
+  shift 4
+  : >"$tmp/files"
+  if (( $# > 0 )); then printf '%s\n' "$@" >"$tmp/files"; fi
+  out="$(CHANGED_FILES_FILE="$tmp/files" "$decide" <<<"$json")"
+  code=$?
+  if [[ "$code" == "$want" && "$out" == "$prefix"* ]]; then
+    echo "ok   $name"
+  else
+    echo "FAIL $name: exit=$code out='$out' (want exit=$want, '$prefix…')"
+    failures=$((failures + 1))
+  fi
+}
+
+unlinked="$(fixture User dev develop develop '[]' '[]')"
+expect_files "docs-only PR passes without an issue" 0 "pass docs-only" "$unlinked" \
+  CLAUDE.md .docs/guide.md "docs/release notes.md"
+expect_files "one non-Markdown file removes the exemption" 1 "fail unlinked" "$unlinked" \
+  CLAUDE.md src/app.ts
+expect_files "a rename from code to Markdown is not docs-only" 1 "fail unlinked" "$unlinked" \
+  notes.md src/old.ts
+expect_files "an empty file list is not docs-only" 1 "fail unlinked" "$unlinked"
+expect_files "workflow files are not docs" 1 "fail unlinked" "$unlinked" \
+  .github/workflows/ci.yml
+expect_files "a Markdown-looking suffix is not Markdown" 1 "fail unlinked" "$unlinked" \
+  README.md.bak
+expect_files "linked issue still reported first-class when files are code" 0 "pass linked" \
+  "$(fixture User dev develop develop '[]' "$issue")" src/app.ts
+expect "a missing file list is not docs-only" 1 "fail unlinked" "$unlinked"
+out="$(CHANGED_FILES_FILE="$tmp/absent" "$decide" <<<"$unlinked")"; code=$?
+if [[ "$code" == 1 && "$out" == "fail unlinked"* ]]; then echo "ok   a nonexistent list path is not docs-only"; else echo "FAIL nonexistent list path: exit=$code out='$out'"; failures=$((failures + 1)); fi
+
 if (( failures > 0 )); then
   echo "$failures test(s) failed"
   exit 1
